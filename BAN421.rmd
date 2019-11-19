@@ -1,0 +1,212 @@
+---
+title: "BAN421-report"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+1. Introduction
+
+In this paper, we try to investigate the influence of other countries' total supply(production)
+and total consumption on the electricity market spot prices in Norway including price Bergen and Tromsø. All the data resource is from Nordpool webiste dating from 2014 to 2018. 
+Before we start analysis, we firstly will explore the more efficient way to accommodate multiple files when loading raw data into R environment, specifically, by comparing the processing time using dataframe and tibble. After then we will make plots to see the general consumption and production trend for each country during the past five years. In addition, the price trend in norway will also be plotted to see how price had fluctuated during the past five years. Under the help of these plots, we will have a better understanding about the evolution of each factor.
+In order to investigate the relationship between consumtion, production and price, we will do so by using different R packages of hidden markov model and compare the output of each package.
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+library("dplyr")
+library("ggplot2")
+library("magrittr")
+library(readxl)
+library(tibble)
+library(readxl)
+
+```
+2. Preparing for analysis
+
+In our first step, we will use system.time to compare the processing time of using dataframe and tibble to accomadate the data we cleaned. We get the following result:
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+#SETTING WORK DIRECTORY
+setwd("/Users/Yako/Desktop/BAN421/Data")
+
+#____________________1.Data cleaning process _______________________
+
+#find the file names of consumption, spot prices and production for each year
+consum_names <- list.files(path = "/Users/Yako/Desktop/BAN421/Data", 
+                           pattern = "consumption-per.*.xlsx", full.names = T)
+elspot_names<-list.files(path = "/Users/Yako/Desktop/BAN421/Data",
+                         pattern="elspot.*.xlsx",full.names = T)
+production_names<-list.files(path = "/Users/Yako/Desktop/BAN421/Data",
+                             pattern="production-per.*.xlsx",full.names = T)
+
+# try to load all 5 years consumption data into one dataframe
+consumption<-data.frame() # create one empty dataframe first
+system.time(for(i in consum_names){
+  #since our data is  pure xlsx format, read_xlsx fits the most
+ consumption <- read_xlsx(i)%>% 
+       bind_rows(consumption)%>% #combine each year's data together by rows
+   na.omit()
+})
+```
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+#use tibble to compare the processing time
+consumption_tib<-tibble()
+system.time(for(i in 1:length(consum_names)){
+  consumption_tib <- read_xlsx(consum_names[i])%>% 
+    bind_rows(consumption_tib)  
+})
+```
+There is not so big difference between the processing time by using tibble and dataframe. This may due to the fact that our raw data is not so large. 
+ 
+To further compare the difference between dataframe and tibble, we also look at the structure of result produced by each. We get the following result:
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+#check the data structure in each
+str(consumption) 
+```
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+str(consumption_tib)
+```
+Looking at the structures by using datafram and tibble, we figured out that  they have same data structure, so we will continue to use dataframe to load production and price data.
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+production <-data.frame()
+for(i in 1:length(production_names)){
+  production <- read_xlsx(production_names[i])%>% 
+    bind_rows( production)%>%
+    na.omit()
+}
+
+price <-data.frame()
+for(i in 1:length(elspot_names)){
+  price<- read_xlsx(elspot_names[i])%>% 
+    bind_rows( price)
+}
+price<-price[,-5]
+price<-na.omit(price)
+```
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+#We continue to load the prognosis data for consumption and production so that we can use that to predict based on our model 
+consum_pre<-list.files(path = "/Users/Yako/Desktop/BAN421/Data", 
+                           pattern = "consumption-pro.*.xlsx", full.names = T)
+consum_pre<-read_xlsx(consum_pre)
+produc_pre<-list.files(path = "/Users/Yako/Desktop/BAN421/Data", 
+                           pattern = "production-pro.*.xlsx", full.names = T)
+produc_pre<-read_xlsx(produc_pre)
+# sum up all productions from small areas in each country and take the total only
+produc_pre<- produc_pre%>%
+  mutate(NO=NO1+NO2+NO3+NO4+NO5)%>%
+  mutate(SE=SE1+SE2+SE3+SE4)%>%
+  mutate(DK=DK1+DK2) %>%
+  select("Date","Hours","FI","DK","EE",
+         "LV","LT","NO","SE")
+#save all these data as R.data
+
+save(consum_pre,consumption,price,produc_pre,production,file="BAN421.Rdata")
+```
+The second step in our research is to make plot in order to have a general picture about price,production, and consumption changes over the five years. The detail of each figure is shown below:
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+#_____________2.ploting_________________________
+load("BAN421.Rdata") #load the data we have saved
+
+#create another "year" variable 
+consumption<-consumption%>%
+  mutate(year = format(Date, "%Y"))
+production<-production%>%
+  mutate(year = format(Date, "%Y"))
+price<-price%>%
+  mutate(year = format(Date, "%Y"))
+
+# 1. consumption
+# create the yearly plotting data
+plot_c<-consumption %>%
+  group_by(year) %>%
+  select("year","NO","SE","DK","FI","LV","LT")%>%
+  summarise_each(funs(sum))
+
+#use ggplot to plot consumtion trend in Norway 
+ggplot(data=consumption,mapping=aes(x=consumption$Date))+
+  geom_line(aes(y=consumption$NO, color="NO"))+
+  xlab("Date")+
+  ylab("consumption")+
+  ggtitle("Daily Consumption in Norway")
+```
+
+
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+#and all countires
+ggplot(data=plot_c,mapping=aes(x=year))+
+  geom_point(aes(y=plot_c$NO, color="NO"))+
+  geom_point(aes(y=plot_c$SE,color="SE"))+
+  geom_point(aes(y=plot_c$DK,color="DK"))+
+  geom_point(aes(y=plot_c$FI,color="FI"))+
+  geom_point(aes(y=plot_c$LV,color="LV"))+
+  geom_point(aes(y=plot_c$LT,color="LT"))+
+  ggtitle("Yearly consumption trend for all")+
+  ylab("consumtion")
+```
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+#2.production
+# create the yearly plotting data
+plot_p<-production %>%
+  group_by(year) %>%
+  select("year","NO","SE","DK","FI","LV","LT")%>%
+  summarise_each(funs(sum)) #sum the toal production each country each year
+#use ggplot to plot production trend in Norway 
+ggplot(data=production,mapping=aes(x=production$Date))+
+  geom_line(aes(y=production$NO, color="NO"))+
+  xlab("Date")+
+  ylab("production")+
+  ggtitle("Daily Production in Norway")
+```
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+#and all  countries
+ggplot(data=plot_p,mapping=aes(x=year))+
+  geom_point(aes(y=plot_p$NO, color="NO"))+
+  geom_point(aes(y=plot_p$SE,color="SE"))+
+  geom_point(aes(y=plot_p$DK,color="DK"))+
+  geom_point(aes(y=plot_p$FI,color="FI"))+
+  geom_point(aes(y=plot_p$LV,color="LV"))+
+  geom_point(aes(y=plot_p$LT,color="LT"))+
+  ggtitle("Yearly production for all")+
+  ylab("production")
+```
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+#3.price
+
+# #use ggplot to plot price trend in Norway 
+ggplot(data=price,mapping=aes(x=price$Date))+
+  geom_line(aes(y=price$Bergen, color="Bergen"))+
+  geom_line(aes(y=price$Tromsø, color="Tromsø"))+
+  xlab("date")+
+  ylab("daily price")+
+  ggtitle("Daily Price in Norway")
+
+```
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+# create the yearly plotting data
+plot_price<-price %>%
+  group_by(year) %>%
+  select("year","Bergen","Tromsø")%>%
+  summarise_each(funs(mean))#calculate the mean price in Norway each year in each place
+#a general trend in each year 
+ggplot(data=plot_price,mapping=aes(x=year))+
+  geom_point(aes(y=plot_price$Bergen, color="Bergen"))+
+  geom_point(aes(y=plot_price$Tromsø,color="Tromsø"))+
+  ggtitle("Yearly price in Norway")+
+  ylab("mean_price")
+
+
+```
+From the above figures, we can see that the consumption and production in Norway differentiate from each other quite a lot, which means that Norway has been trading (import and export) electricity with other countries. This gives us a positive signal about our hypothesis that other countries' consumption and production may have an impact on the price in Norwegian market. The market spot price in Norway has been fluctuating since 2014 and presents an incresing trend since 2015. Especially, there are two peak time periods in Tromsø. The reasons behind this are not that clear and we belive that there are way more factors influence this. However in our report, we are going to only focus on the impact by other countries' consumption and production by using Hidden Markov Model.    
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+#________________3.statistical methods_______________________
+
+
+
+
+```
