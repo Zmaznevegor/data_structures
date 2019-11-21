@@ -15,13 +15,19 @@ and total consumption on the electricity market spot prices in Norway including 
 Before we start analysis, we firstly will explore the more efficient way to accommodate multiple files when loading raw data into R environment, specifically, by comparing the processing time using dataframe and tibble. After then we will make plots to see the general consumption and production trend for each country during the past five years. In addition, the price trend in norway will also be plotted to see how price had fluctuated during the past five years. Under the help of these plots, we will have a better understanding about the evolution of each factor.
 In order to investigate the relationship between consumtion, production and price, we will do so by using different R packages of hidden markov model and compare the output of each package.
 
+
 ```{r, warning = FALSE, message = FALSE, echo = FALSE}
-library("dplyr")
-library("ggplot2")
-library("magrittr")
+library(dplyr)
+library(ggplot2)
+library(magrittr)
 library(readxl)
 library(tibble)
 library(readxl)
+library(depmixS4)
+library(quantmod)
+library(MASS)
+library(reshape2)
+library(gridExtra)
 
 ```
 2. Preparing for analysis
@@ -202,11 +208,100 @@ ggplot(data=plot_price,mapping=aes(x=year))+
 
 
 ```
-From the above figures, we can see that the consumption and production in Norway differentiate from each other quite a lot, which means that Norway has been trading (import and export) electricity with other countries. This gives us a positive signal about our hypothesis that other countries' consumption and production may have an impact on the price in Norwegian market. The market spot price in Norway has been fluctuating since 2014 and presents an incresing trend since 2015. Especially, there are two peak time periods in Tromsø. The reasons behind this are not that clear and we belive that there are way more factors influence this. However in our report, we are going to only focus on the impact by other countries' consumption and production by using Hidden Markov Model.    
+From the above figures, we can see that the consumption and production in Norway differentiates from each other quite a lot, which means that Norway has been trading (import and export) electricity with other countries. This gives us a positive signal about our hypothesis that other countries' consumption and production may have an impact on the price in Norwegian market. The market spot price in Norway has been fluctuating since 2014 and presents an incresing trend since 2015. Especially, there are two peak time periods in Tromsø. The reasons behind this are not that clear and we belive that there are way more factors influence this. However in our report, we are going to only focus on the impact by other countries' consumption and production by using Hidden Markov Model.    
+
+
+(more about explanation to the models:)
+
+
+
+
 ```{r, warning = FALSE, message = FALSE, echo = FALSE}
 #________________3.statistical methods_______________________
+# approach one
+# Combine tables with all the data and preproceess the data
+comb <-  inner_join(consumption, production,
+                   by = c("Date", "Hours"))
+
+comb <- comb %>% 
+  mutate(NO = NO.y - NO.x,
+         
+         DK = DK.y - DK.x,
+         SE = SE.y - SE.x,
+         NORD = Nordic.y - Nordic.x)
+
+comb <- comb[c("Date", "Hours", "NO", "DK", "SE", "NORD")]
+
+comb <- comb %>% 
+  group_by(Date) %>% 
+  summarise(NO = sum(NO),
+            DK = sum(DK),
+            SE = sum(SE),
+            NORD = sum(NORD))
+
+comb <- comb %>% 
+    mutate(NO_state = as.logical(NO > 0),
+           DK_state = as.logical(DK >0),
+           SE_state = as.logical(SE > 0),
+           NORD_state = as.logical(NORD > 0))
+
+comb <- as.data.frame(lapply(comb, function(y) gsub("TRUE", "Surplus", y)))
+comb <- as.data.frame(lapply(comb, function(y) gsub("FALSE", "Deficit", y)))
+
+comb[6:9] <- lapply(comb[6:9], as.character)
+comb$Date <- as.Date(comb$Date)
+
+# Define the price fluctuations
+fluc <- diff(log(as.numeric(comb$NORD)))
+fluc <- c(0, fluc)
+
+# Run and fit HMM
+hmm <- depmix(fluc ~ 1, 
+              family = gaussian(), 
+              nstates = 2, 
+              data = comb)
+
+fit.hmm <- fit(hmm)
+est.states <- posterior(fit.hmm)
+
+# Analyse the results
+tbl <- table(est.states$state, comb$NO_state)
+colnames(est.states)[2:3] <- c("Deficit", "Surplus")
+est.states$Date <- comb$Date
+
+grep("Deficit", comb$NO_state)
+grep("1", est.states$state)
+
+est.states$state <- gsub("1", "Deficit", est.states$state)
+est.states$state <- gsub("2", "Surplus", est.states$state)
+tbl
+
+# Plot the results
+mycols <- c("darkmagenta", "turquoise")
+
+g1 <- ggplot(comb, aes(x = Date, y = NO_state, fill = NO_state, col = NO_state)) + 
+         geom_bar(stat = "identity", alpha = I(0.75)) + 
+         scale_fill_manual(values = mycols, labels = c("Deficit", "Surplus")) +
+         scale_color_manual(values = mycols, labels = c("Deficit", "Surplus")) +
+         theme(axis.ticks = element_blank(), axis.text.y = element_blank()) +
+         labs(y = "Actual State")
+
+g2 <- ggplot(est.states, aes(x = Date, y = state, fill = state, col = state)) + 
+  geom_bar(stat = "identity", alpha = I(0.75)) +
+  scale_fill_manual(values = mycols, name = "State:\nProduction of\nNorway", labels = c("Deficit", "Surplus")) +
+  scale_color_manual(values = mycols, name = "State:\nProduction of\nNorway", labels = c("Deficit", "Surplus")) +
+  theme(axis.ticks = element_blank(), axis.text.y = element_blank()) + 
+  labs(y = "Estimated State")
+
+grid.arrange(g1, g2, 
+             widths = 1, 
+             nrow = 2)
 
 
 
+
+```
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+### second approach
 
 ```
