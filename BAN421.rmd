@@ -459,14 +459,16 @@ Taking everything into account, we can conclude by saying that Norway is one of 
 
 # References
 
-Monica Franzese, Antonella Iuliano, in Encyclopedia of Bioinformatics and Computational Biology, 2019  
+Iuliano.A, Franzese.M. 2019. “Correlation Analysis”. In Encyclopedia of Bioinformatics and Computational Biology,2019, Edited by Shoba Ranganathan, Michael Gribskov, Kenta Nakai and Christian Schönbach. Elsevier  
 
-Fine, S., Singer, Y., & Tishby, N. (1998). The hierarchical hidden Markov model: Analysis and applications. Machine learning, 32(1), 41-62.  
+Jurafsky.D & Martin.H.J. 2019. Speech and Language Processing,3rd ed. draft.  
 
-Seymore, K., McCallum, A., & Rosenfeld, R. (1999, July). Learning hidden Markov model structure for information extraction. In AAAI-99 workshop on machine learning for information extraction (pp. 37-42).  
+Hassan, M. R., & Nath, B. 2005. Stock market forecasting using hidden Markov model: a new approach. Proceedings of 5th International Conference on Intelligent Systems Design and Applications (ISDA’05), IEEE, pp. 192-196.  
 
-Hassan, M. R., & Nath, B. (2005, September). Stock market forecasting using hidden Markov model: a new approach. In 5th International Conference on Intelligent Systems Design and Applications (ISDA'05) (pp. 192-196). IEEE.  
+Zucchini, W., MacDonald, I. L., & Langrock, R. 2017. Hidden Markov models for time series: an introduction using R. Chapman and Hall/CRC.  
 
-Zucchini, W., MacDonald, I. L., & Langrock, R. (2017). Hidden Markov models for time series: an introduction using R. Chapman and Hall/CRC.  
+Gavin Yeo et al (2019), MPA-IBM Project SAFER: Sense-making Analytics for Maritime Event Recognition, INFORMS Journal on Applied Analytics;  
 
-Speech and Language Processing. Daniel Jurafsky & James H. Martin. 2019 
+Teusch, J., Behrens, A., & Egenhofer, C. (2012). The benefits of investing in electricity transmission: lessons from Northern Europe. CEPS Special Reports, Forthcoming.  
+
+Christie, R. D., & Wangensteen, I. (1998). The energy market in Norway and Sweden: Introduction. IEEE Power Engineering Review, 18(2), 44-45.
