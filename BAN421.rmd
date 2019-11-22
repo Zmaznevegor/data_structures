@@ -44,9 +44,6 @@ library(depmixS4)
 
 For our first step, we use system.time to compare the processing time of using dataframe and tibble to accomadate the data we cleaned. We get the following result:
 ```{r Data cleaning, warning = FALSE, message = FALSE, echo = FALSE}
-#SETTING WORK DIRECTORY
-setwd("~/NHH Semester I/BAN421 - Data Structures in R/Paper/Project_421/Data")
-
 ## 1.Data cleaning process ----
 
 #find the file names of consumption, spot prices and production for each year
