@@ -12,71 +12,80 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Introduction
 1. Introduction
 
-In this paper, we try to investigate the influence of other countries' total supply(production)
-and total consumption on the electricity market spot prices in Norway including price Bergen and Tromsø. All the data resource is from Nordpool webiste dating from 2014 to 2018. 
-Before we start analysis, we firstly will explore the more efficient way to accommodate multiple files when loading raw data into R environment, specifically, by comparing the processing time using dataframe and tibble. After then we will make plots to see the general consumption and production trend for each country during the past five years. In addition, the price trend in norway will also be plotted to see how price had fluctuated during the past five years. Under the help of these plots, we will have a better understanding about the evolution of each factor.
-In order to investigate the relationship between consumtion, production and price, we will do so by using different R packages of hidden markov model and compare the output of each package.
+In this paper, we try to investigate the influence of other countries' total supply (production)
+and total consumption on the electricity market spot prices in Norway, investigating prices for Bergen and Tromsø. All the input data is taken from the Nordpool webiste and is dating from 2014 to 2018. 
 
+# Economic reasoning 
+Comparing production and consumption volumes of electricity for a country, one can easily calculate the delta of those, representing times in which there is either overproduction or oversupply. Assuming a non-perfect energy storage capacitiy, these peaks and lows in the nation-wide electricty net provide the opportunity and need to trade electricity with economically and geographically closely related countries [citation].
 
-```{r Libraries, echo=, message=FALSE, warning=FALSE}
-# Load libraries----
-library(dplyr)
-library(ggplot2)
-library(magrittr)
+Therefore, our Reasearch Question is: how depended is Norway and its electricity price from other nordic countries and their electricity production?
+
+Before starting the analysis, we explore the most efficient way to accommodate multiple files when loading raw data into an R environment, specifically, by comparing the processing time using dataframe and tibble. After that, we will make plots to see the general consumption and production trends for each country during the past five years. In addition, the price trend in Norway will also be plotted to see how price had fluctuated during the past five years. Under the help of these plots, we will have a better understanding about the evolution of each factor. In order to investigate the relationship between consumtion, production and price, we will use baysian statistics, and specifically the Hidden Markov Model (HMM). We will implement it with a suitable R package and finally interpret the results.
+
+# If we are really going ahead with the Dplyr package (since this guy HATES it, we should at least acknowledge that this is not the only way)
+For the purpose of our investigation, we decided to use packages from the so-call R "tidyverse". While the group is aware of the multiple downsides of using piped statements, we decided for the purpose of this particular investigation to make use of them.
+
+```{r Libraries, warning = FALSE, message = FALSE, echo = FALSE}
+# loading required packages
 library(readxl)
 library(tibble)
-library(readxl)
-library(depmixS4)
 library(quantmod)
 library(MASS)
 library(reshape2)
+library(dplyr) ## really?
+library(ggplot2)
 library(gridExtra)
+library(magrittr) ## really?
+library(depmixS4)
+# rm( list=ls() )
 ```
 # Preprocessing and analysis
 2. Preparing for analysis
 
-In our first step, we will use system.time to compare the processing time of using dataframe and tibble to accomadate the data we cleaned. We get the following result:
-```{r Data cleaning, echo=, message=FALSE, warning=FALSE}
+For our first step, we use system.time to compare the processing time of using dataframe and tibble to accomadate the data we cleaned. We get the following result:
+```{r Data cleaning, warning = FALSE, message = FALSE, echo = FALSE}
+#SETTING WORK DIRECTORY
+setwd("~/NHH Semester I/BAN421 - Data Structures in R/Paper/Project_421/Data")
+
 ## 1.Data cleaning process ----
 
-# find the file names of consumption, spot prices and production for each year
-consum_names <- list.files(path = "/Users/Yako/Desktop/BAN421/Data", 
-                           pattern = "consumption-per.*.xlsx", full.names = T)
-elspot_names<-list.files(path = "/Users/Yako/Desktop/BAN421/Data",
-                         pattern="elspot.*.xlsx",full.names = T)
-production_names<-list.files(path = "/Users/Yako/Desktop/BAN421/Data",
-                             pattern="production-per.*.xlsx",full.names = T)
+#find the file names of consumption, spot prices and production for each year
+consum_names <- list.files(path = "~/NHH Semester I/BAN421 - Data Structures in R/Paper/Project_421/Data", pattern = "consumption-per.*.xlsx", full.names = T)
+elspot_names <- list.files(path = "~/NHH Semester I/BAN421 - Data Structures in R/Paper/Project_421/Data", pattern = "elspot.*.xlsx", full.names = T)
+production_names <- list.files(path = "~/NHH Semester I/BAN421 - Data Structures in R/Paper/Project_421/Data", pattern = "production-per.*.xlsx", full.names = T)
 
 # try to load all 5 years consumption data into one dataframe
-consumption<-data.frame() # create one empty dataframe first
+consumption <- data.frame() # create one empty dataframe first
 system.time(for(i in consum_names){
-  #since our data is  pure xlsx format, read_xlsx fits the most
-  consumption <- read_xlsx(i)%>% 
-    bind_rows(consumption)%>% #combine each year's data together by rows
-    na.omit()
+  #since our data is  pure xls format, read_xls fits the most
+ consumption <- read_xlsx(i)%>% 
+       bind_rows(consumption)%>% #combine each year's data together by rows
+   na.omit()
 })
 ```
-
+Compare against t
 ```{r Time comparison, warning = FALSE, message = FALSE, echo = FALSE}
-# use tibble to compare the processing time
+#use tibble to compare the processing time
 consumption_tib<-tibble()
 system.time(for(i in 1:length(consum_names)){
   consumption_tib <- read_xlsx(consum_names[i])%>% 
     bind_rows(consumption_tib)  
 })
 ```
-There is not so big difference between the processing time by using tibble and dataframe. This may due to the fact that our raw data is not so large. 
-
-To further compare the difference between dataframe and tibble, we also look at the structure of result produced by each. We get the following result:
+We cannot observe a significant difference between the processing times of either using tibble or dataframe. This might be due to the fact that our raw data is not large enough to observe a difference between the different loading algorithms.
+ 
+To further compare the difference between dataframe and tibble, we also look at the structure of results produced by each. We get the following result:
 
 ```{r Check data structure, warning = FALSE, message = FALSE, echo = FALSE}
-# check the data structure in each
+#check the data structure in each
 str(consumption) 
 ```
 ```{r, warning = FALSE, message = FALSE, echo = FALSE}
 str(consumption_tib)
 ```
-Looking at the structures by using datafram and tibble, we figured out that  they have same data structure, so we will continue to use dataframe to load production and price data.
+
+They have the same data structure, so we will continue to use dataframe to load production and price data.
+
 ```{r Binding dataframes, warning = FALSE, message = FALSE, echo = FALSE}
 production <-data.frame()
 for(i in 1:length(production_names)){
@@ -94,29 +103,33 @@ price<-price[,-5]
 price<-na.omit(price)
 ```
 
+We continue to load the prognosis data for consumption and production in the different countries, so that we can use it to predict based on our model.
+
 ```{r Finalized R-data, warning = FALSE, message = FALSE, echo = FALSE}
-# We continue to load the prognosis data for consumption and production so that we can use that to predict based on our model 
-consum_pre<-list.files(path = "/Users/Yako/Desktop/BAN421/Data", 
-                       pattern = "consumption-pro.*.xlsx", full.names = T)
+consum_pre<-list.files(path = "~/NHH Semester I/BAN421 - Data Structures in R/Paper/Project_421/Data", 
+                           pattern = "consumption-pro.*.xlsx", full.names = T)
 consum_pre<-read_xlsx(consum_pre)
-produc_pre<-list.files(path = "/Users/Yako/Desktop/BAN421/Data", 
-                       pattern = "production-pro.*.xlsx", full.names = T)
+produc_pre<-list.files(path = "~/NHH Semester I/BAN421 - Data Structures in R/Paper/Project_421/Data", 
+                           pattern = "production-pro.*.xlsx", full.names = T)
 produc_pre<-read_xlsx(produc_pre)
 # sum up all productions from small areas in each country and take the total only
 produc_pre<- produc_pre%>%
   mutate(NO=NO1+NO2+NO3+NO4+NO5)%>%
   mutate(SE=SE1+SE2+SE3+SE4)%>%
   mutate(DK=DK1+DK2) %>%
-  select("Date","Hours","FI","DK","EE",
+  dplyr::select("Date","Hours","FI","DK","EE", # specify to avoid overlap with "MASS" package
          "LV","LT","NO","SE")
-#save all these data as R.data
 
+# save all these data as R.data
 save(consum_pre,consumption,price,produc_pre,production,file="BAN421.Rdata")
 ```
-The second step in our research is to make plot in order to have a general picture about price,production, and consumption changes over the five years. The detail of each figure is shown below:
+
+3. Plotting
+
+The next step in our research is to create plots in order to have a general picture about price,production, and consumption changes over the five year timeframe. After creating the yearly amounts, we firstly look at the variety in consumption in Norway.
+
 ```{r Data Plotting, warning = FALSE, message = FALSE, echo = FALSE}
-## 2.Plotting ----
-load("BAN421.Rdata") #load the data we have saved
+#load("BAN421.Rdata") # load data, if start only from here
 
 # create another "year" variable 
 consumption<-consumption%>%
@@ -126,21 +139,25 @@ production<-production%>%
 price<-price%>%
   mutate(year = format(Date, "%Y"))
 
-# 1. consumption
+# i) consumption
 # create the yearly plotting data
 plot_c<-consumption %>%
   group_by(year) %>%
-  select("year","NO","SE","DK","FI","LV","LT")%>%
+  dplyr::select("year","NO","SE","DK","FI","LV","LT")%>%
   summarise_each(funs(sum))
 
-# use ggplot to plot consumtion trend in Norway 
+# plot consumtion trend in Norway 
 ggplot(data=consumption,mapping=aes(x=consumption$Date))+
   geom_line(aes(y=consumption$NO, color="NO"))+
   xlab("Date")+
   ylab("consumption")+
   ggtitle("Daily Consumption in Norway")
+```
 
-# all countires
+One can observe seasonal fluctuations, with a higher demand for electricity in winter months than in summer months. Following, we compare the yearly consumption of all countries.
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+#and all countires
 ggplot(data=plot_c,mapping=aes(x=year))+
   geom_point(aes(y=plot_c$NO, color="NO"))+
   geom_point(aes(y=plot_c$SE,color="SE"))+
@@ -148,24 +165,29 @@ ggplot(data=plot_c,mapping=aes(x=year))+
   geom_point(aes(y=plot_c$FI,color="FI"))+
   geom_point(aes(y=plot_c$LV,color="LV"))+
   geom_point(aes(y=plot_c$LT,color="LT"))+
-  ggtitle("Yearly consumption trend for all")+
-  ylab("consumtion")
+  ggtitle("Yearly consumption for all countries")+
+  ylab("Total electricity consumption")
+## can we change to smth. that shows more "meaning"/ with a line?
+```
 
-#2.production
+Here one can see that Norway and Sweden have the highest yearly consumption. The trend for all countries is slightly increasing over the years, but mostly constant. Following, we plot the same for the production.
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+# 2. Production
 # create the yearly plotting data
 plot_p<-production %>%
   group_by(year) %>%
-  select("year","NO","SE","DK","FI","LV","LT")%>%
+  dplyr::select("year","NO","SE","DK","FI","LV","LT")%>%
   summarise_each(funs(sum)) #sum the toal production each country each year
-
-#use ggplot to plot production trend in Norway 
+# use ggplot to plot production trend in Norway 
 ggplot(data=production,mapping=aes(x=production$Date))+
   geom_line(aes(y=production$NO, color="NO"))+
   xlab("Date")+
   ylab("production")+
   ggtitle("Daily Production in Norway")
-
-#and all  countries
+```
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+# ...and for all  countries
 ggplot(data=plot_p,mapping=aes(x=year))+
   geom_point(aes(y=plot_p$NO, color="NO"))+
   geom_point(aes(y=plot_p$SE,color="SE"))+
@@ -175,37 +197,56 @@ ggplot(data=plot_p,mapping=aes(x=year))+
   geom_point(aes(y=plot_p$LT,color="LT"))+
   ggtitle("Yearly production for all")+
   ylab("production")
-
-#3.price
-
-# #use ggplot to plot price trend in Norway 
-ggplot(data=price,mapping=aes(x=price$Date))+
-  geom_line(aes(y=price$Bergen, color="Bergen"))+
-  geom_line(aes(y=price$Tromsø, color="Tromsø"))+
-  xlab("date")+
-  ylab("daily price")+
-  ggtitle("Daily Price in Norway")
-
-# create the yearly plotting data
-plot_price<-price %>%
-  group_by(year) %>%
-  select("year","Bergen","Tromsø")%>%
-  summarise_each(funs(mean))#calculate the mean price in Norway each year in each place
-#a general trend in each year 
-ggplot(data=plot_price,mapping=aes(x=year))+
-  geom_point(aes(y=plot_price$Bergen, color="Bergen"))+
-  geom_point(aes(y=plot_price$Tromsø,color="Tromsø"))+
-  ggtitle("Yearly price in Norway")+
-  ylab("mean_price")
+## can we change to smth. that shows more "meaning"/ with a line?
 ```
 
-From the above figures, we can see that the consumption and production in Norway differentiates from each other quite a lot, which means that Norway has been trading (import and export) electricity with other countries. This gives us a positive signal about our hypothesis that other countries' consumption and production may have an impact on the price in Norwegian market. The market spot price in Norway has been fluctuating since 2014 and presents an incresing trend since 2015. Especially, there are two peak time periods in Tromsø. The reasons behind this are not that clear and we belive that there are way more factors influence this. However in our report, we are going to only focus on the impact by other countries' consumption and production by using Hidden Markov Model.    
+Also here we can observe just slighty fluctuating volumes, with Norway and Sweden being the main producers. Now, we have a look at the development of the electricity price in Norway for two cities.
 
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+# 3.Price
 
-(more about explanation to the models:)
+# Use ggplot to plot price trend in Norway 
+ggplot(data=price,mapping=aes(x=price$Date))+
+  geom_line(aes(y=price$Tromsø, color="Tromsø"))+
+  geom_line(aes(y=price$Bergen, color="Bergen"))+
+  xlab("date")+
+  ylab("daily price")+ #what type of price? spot, average..?
+  ggtitle("Daily Price in Norway")
+```
 
-```{r message = FALSE, warning = FALSE, echo = FALSE}
-## 3.Statistical methods ----
+Quite interesting to observe, there are heavy fluctuations in the electricity price, and for a few times, there are heavy spikes. Furthermore, prices in Bergen and Tromsø do differ.
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+# Create the yearly plotting data
+plot_price<-price %>%
+  group_by(year) %>%
+  dplyr::select("year","Bergen","Tromsø")%>%
+  summarise_each(funs(mean))#calculate the mean price in Norway each year in each place
+# A general trend in each year 
+ggplot(data=plot_price,mapping=aes(x=year))+
+  geom_point(aes(y=plot_price$Bergen, color="Bergen"))+
+  geom_point(aes(y=plot_price$Tromsø, color="Tromsø"))+
+  ggtitle("Yearly price in Norway")+
+  ylab("mean_price")
+## can we change to smth. that shows more "meaning"/ with a line?
+```
+From the above figures, we can see that the consumption and production in Norway differentiate from each other quite a lot, which means that Norway has been trading (import and export) electricity with other countries. This gives us a positive signal about our hypothesis that other countries' consumption and production may have an impact on the price in Norwegian market. The market spot price in Norway has been fluctuating since 2014 and presents an incresing trend since 2015. Especially, there are two peak time periods in Tromsø. The reasons behind this are not that clear and we belive that there are way more factors influencing this. However in our report, we are going to focus only on the impact by other countries' consumption and production.
+
+3. Model: Introduction, definition, fit
+
+# Theory
+Therefore, in the following we will introduce the Hidden Markov Model (HMM) to uncover this. The HMM can be seen as the [... + sources]
+In economics, HMM are mainly applied as so-called regime switching models.
+
+# Packages
+To indentify suitable packages to implement this method in R, we looked through the "Comprehensive R Archive Network Task View" and found in total three packages: "depmixS4", "HMM", and "HiddenMarkov". After comparing and testing, we decided for "depmixS4", which is regulary updated and often used in recent research (e.g. CITATION). [...]
+
+# Approach (Egor -> Please adjust)
+To prepare data for the HMM model, we need to define the different states we are interested in, which are the other countries and which influence they have on the Norwegian electricity price. Therefore, we take the delta of supply and demand for a given country, where a positive number indicates an over-production and therefore an export to another country (e.g. Norway) and a negative number indegates an under-consumsion, which means that the country need to import electricity. Therefore, we define:
+S1: 
+S2: 
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
 # Combine tables with all the data and preproceess the data----
 comb <-  inner_join(consumption, production,
                     by = c("Date", "Hours"))
@@ -241,5 +282,56 @@ comb <- as.data.frame(lapply(comb, function(y) gsub("FALSE", "Deficit", y)))
 # Convert to the proper formatting
 comb[6:9] <- lapply(comb[6:9], as.character)
 comb$Date <- as.Date(comb$Date)
+
+# Define the price fluctuations
+fluc <- diff(log(as.numeric(comb$NORD)))
+fluc <- c(0, fluc)
+
+# Run and fit HMM
+hmm <- depmix(fluc ~ 1, 
+              family = gaussian(), 
+              nstates = 2, 
+              data = comb)
+
+fit.hmm <- fit(hmm)
+est.states <- posterior(fit.hmm)
+
+# Analyse the results
+tbl <- table(est.states$state, comb$NO_state)
+colnames(est.states)[2:3] <- c("Deficit", "Surplus")
+est.states$Date <- comb$Date
+
+grep("Deficit", comb$NO_state)
+grep("1", est.states$state)
+
+est.states$state <- gsub("1", "Deficit", est.states$state)
+est.states$state <- gsub("2", "Surplus", est.states$state)
+tbl
+
+# Plot the results
+mycols <- c("darkmagenta", "turquoise")
+
+g1 <- ggplot(comb, aes(x = Date, y = NO_state, fill = NO_state, col = NO_state)) + 
+         geom_bar(stat = "identity", alpha = I(0.75)) + 
+         scale_fill_manual(values = mycols, labels = c("Deficit", "Surplus")) +
+         scale_color_manual(values = mycols, labels = c("Deficit", "Surplus")) +
+         theme(axis.ticks = element_blank(), axis.text.y = element_blank()) +
+         labs(y = "Actual State")
+
+g2 <- ggplot(est.states, aes(x = Date, y = state, fill = state, col = state)) + 
+  geom_bar(stat = "identity", alpha = I(0.75)) +
+  scale_fill_manual(values = mycols, name = "State:\nProduction of\nNorway", labels = c("Deficit", "Surplus")) +
+  scale_color_manual(values = mycols, name = "State:\nProduction of\nNorway", labels = c("Deficit", "Surplus")) +
+  theme(axis.ticks = element_blank(), axis.text.y = element_blank()) + 
+  labs(y = "Estimated State")
+
+grid.arrange(g1, g2, 
+             widths = 1, 
+             nrow = 2)
+
+
 ```
 
+4. Interpretation 
+
+The final graph shows us [...]
