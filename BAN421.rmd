@@ -142,18 +142,14 @@ plot_c<-consumption %>%
   summarise_each(funs(sum))
 
 # plot consumtion trend in Norway 
-ggplot(data=consumption,mapping=aes(x=consumption$Date))+
+g1 <- ggplot(data=consumption,mapping=aes(x=consumption$Date))+
   geom_line(aes(y=consumption$NO, color="NO"))+
   xlab("Date")+
   ylab("consumption")+
   ggtitle("Daily Consumption in Norway")
-```
 
-One can observe seasonal fluctuations, with a higher demand for electricity in winter months than in summer months. Following, we compare the yearly consumption of all countries.
-
-```{r, warning = FALSE, message = FALSE, echo = FALSE}
 #and all countires
-ggplot(data=plot_c,mapping=aes(x=year))+
+g2 <- ggplot(data=plot_c,mapping=aes(x=year))+
   geom_point(aes(y=plot_c$NO, color="NO"))+
   geom_point(aes(y=plot_c$SE,color="SE"))+
   geom_point(aes(y=plot_c$DK,color="DK"))+
@@ -162,8 +158,13 @@ ggplot(data=plot_c,mapping=aes(x=year))+
   geom_point(aes(y=plot_c$LT,color="LT"))+
   ggtitle("Yearly consumption for all countries")+
   ylab("Total electricity consumption")
-## can we change to smth. that shows more "meaning"/ with a line?
+
+grid.arrange(g1, g2,
+             widths = 1, 
+             nrow = 2)
 ```
+
+One can observe seasonal fluctuations, with a higher demand for electricity in winter months than in summer months. Following, we compare the yearly consumption of all countries.
 
 Here one can see that Norway and Sweden have the highest yearly consumption. The trend for all countries is slightly increasing over the years, but mostly constant. Following, we plot the same for the production.
 
@@ -175,15 +176,13 @@ plot_p<-production %>%
   dplyr::select("year","NO","SE","DK","FI","LV","LT")%>%
   summarise_each(funs(sum)) #sum the toal production each country each year
 # use ggplot to plot production trend in Norway 
-ggplot(data=production,mapping=aes(x=production$Date))+
+g1 <- ggplot(data=production,mapping=aes(x=production$Date))+
   geom_line(aes(y=production$NO, color="NO"))+
   xlab("Date")+
   ylab("production")+
   ggtitle("Daily Production in Norway")
-```
-```{r, warning = FALSE, message = FALSE, echo = FALSE}
-# ...and for all  countries
-ggplot(data=plot_p,mapping=aes(x=year))+
+
+g2 <- ggplot(data=plot_p,mapping=aes(x=year))+
   geom_point(aes(y=plot_p$NO, color="NO"))+
   geom_point(aes(y=plot_p$SE,color="SE"))+
   geom_point(aes(y=plot_p$DK,color="DK"))+
@@ -192,39 +191,43 @@ ggplot(data=plot_p,mapping=aes(x=year))+
   geom_point(aes(y=plot_p$LT,color="LT"))+
   ggtitle("Yearly production for all")+
   ylab("production")
-## can we change to smth. that shows more "meaning"/ with a line?
+
+grid.arrange(g1, g2,
+             widths = 1, 
+             nrow = 2)
 ```
 
 Also here we can observe just slighty fluctuating volumes, with Norway and Sweden being the main producers. Now, we have a look at the development of the electricity price in Norway for two cities.
 
-```{r, warning = FALSE, message = FALSE, echo = FALSE}
-# 3.Price
-
+```{r Price, warning = FALSE, message = FALSE, echo = FALSE}
 # Use ggplot to plot price trend in Norway 
-ggplot(data=price,mapping=aes(x=price$Date))+
+g1 <- ggplot(data=price,mapping=aes(x=price$Date))+
   geom_line(aes(y=price$Tromsø, color="Tromsø"))+
   geom_line(aes(y=price$Bergen, color="Bergen"))+
   xlab("date")+
-  ylab("daily price")+ #what type of price? spot, average..?
+  ylab("daily price")+ 
   ggtitle("Daily Price in Norway")
-```
 
-Quite interesting to observe, there are heavy fluctuations in the electricity price, and for a few times, there are heavy spikes. Furthermore, prices in Bergen and Tromsø do differ.
-
-```{r, warning = FALSE, message = FALSE, echo = FALSE}
 # Create the yearly plotting data
 plot_price<-price %>%
   group_by(year) %>%
   dplyr::select("year","Bergen","Tromsø")%>%
   summarise_each(funs(mean))#calculate the mean price in Norway each year in each place
 # A general trend in each year 
-ggplot(data=plot_price,mapping=aes(x=year))+
+
+g2 <- ggplot(data=plot_price,mapping=aes(x=year))+
   geom_point(aes(y=plot_price$Bergen, color="Bergen"))+
   geom_point(aes(y=plot_price$Tromsø, color="Tromsø"))+
   ggtitle("Yearly price in Norway")+
   ylab("mean_price")
-## can we change to smth. that shows more "meaning"/ with a line?
+
+grid.arrange(g1, g2,
+             widths = 1, 
+             nrow = 2)
 ```
+
+Quite interesting to observe, there are heavy fluctuations in the electricity price, and for a few times, there are heavy spikes. Furthermore, prices in Bergen and Tromsø do differ.
+
 From the above figures, we can see that the consumption and production in Norway differentiate from each other quite a lot, which means that Norway has been trading (import and export) electricity with other countries. This gives us a positive signal about our hypothesis that other countries' consumption and production may have an impact on the price in Norwegian market. The market spot price in Norway has been fluctuating since 2014 and presents an incresing trend since 2015. Especially, there are two peak time periods in Tromsø. The reasons behind this are not that clear and we belive that there are way more factors influencing this. However in our model, we are going to focus only on the impact by other countries' consumption and production.
 
 # 3. Hidden Markov Model
@@ -363,6 +366,7 @@ For these matter, we developed two major functions. First function (`hmm`), is g
 
 ## Interpretation 
 
+NORD
 ```{r NORD, warning = FALSE, message = FALSE, echo = FALSE}
 # Run functions for NORD
 # Results are rather disperse
@@ -371,5 +375,21 @@ display.hmm(original = comb,
                         data = comb))
 ```
 
+Denmark
+```{r DK, warning = FALSE, message = FALSE, echo = FALSE}
+# Run functions for NORD
+# Results are rather disperse
+display.hmm(original = comb,
+            model = hmm(param = comb$DK,
+                        data = comb))
+```
 
+Sweden
+```{r SE, warning = FALSE, message = FALSE, echo = FALSE}
+# Run functions for NORD
+# Results are rather disperse
+display.hmm(original = comb,
+            model = hmm(param = comb$SE,
+                        data = comb))
+```
 The final graph shows us [...]
