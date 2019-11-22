@@ -3,6 +3,7 @@ title: "BAN421-report"
 author: "Group 2"
 date: "November 22, 2019"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
 ---
@@ -240,15 +241,16 @@ In economics, HMM are mainly applied as so-called regime switching models.
 # Packages
 To indentify suitable packages to implement this method in R, we looked through the "Comprehensive R Archive Network Task View" and found in total three packages: "depmixS4", "HMM", and "HiddenMarkov". After comparing and testing, we decided for "depmixS4", which is regulary updated and often used in recent research (e.g. CITATION). [...]
 
-# Approach (Egor -> Please adjust)
+# Approach 
 To prepare data for the HMM model, we need to define the different states we are interested in, which are the other countries and which influence they have on the Norwegian electricity price. Therefore, we take the delta of supply and demand for a given country, where a positive number indicates an over-production and therefore an export to another country (e.g. Norway) and a negative number indegates an under-consumsion, which means that the country need to import electricity. Therefore, we define:
 S1: 
 S2: 
 
-```{r, warning = FALSE, message = FALSE, echo = FALSE}
+```{r Statistical methods, message=FALSE, warning=FALSE, include=FALSE}
+## 3.Statistical methods ----
 # Combine tables with all the data and preproceess the data----
 comb <-  inner_join(consumption, production,
-                    by = c("Date", "Hours"))
+                   by = c("Date", "Hours"))
 
 # Add new parameters to the combined table based on the production and consumption parameters
 comb <- comb %>% 
@@ -270,10 +272,10 @@ comb <- comb %>%
 
 # Add logical parameters showing the state of each country
 comb <- comb %>% 
-  mutate(NO_state = as.logical(NO > 0),
-         DK_state = as.logical(DK >0),
-         SE_state = as.logical(SE > 0),
-         NORD_state = as.logical(NORD > 0))
+    mutate(NO_state = as.logical(NO > 0),
+           DK_state = as.logical(DK >0),
+           SE_state = as.logical(SE > 0),
+           NORD_state = as.logical(NORD > 0))
 
 comb <- as.data.frame(lapply(comb, function(y) gsub("TRUE", "Surplus", y)))
 comb <- as.data.frame(lapply(comb, function(y) gsub("FALSE", "Deficit", y)))
@@ -282,53 +284,65 @@ comb <- as.data.frame(lapply(comb, function(y) gsub("FALSE", "Deficit", y)))
 comb[6:9] <- lapply(comb[6:9], as.character)
 comb$Date <- as.Date(comb$Date)
 
-# Define the price fluctuations
-fluc <- diff(log(as.numeric(comb$NORD)))
-fluc <- c(0, fluc)
+# Run and fit HMM----
+hmm <- function (param, data){
+  
+  # We will use the changes in fluctuations as dependece ground for the HMM
+  fluc <- diff(log(as.numeric(param)))
+  fluc <- c(0, fluc)
+  
+  # Set the model
+  model <- depmix(fluc ~ 1, 
+                family = gaussian(), # normal (gaussian) param distribution
+                nstates = 2, # number of states
+                data = comb) # used data 
+  
+  # Fit the data and get it as data frame with the defined states
+  fit.hmm <- fit(model)
+  est.states <- posterior(fit.hmm)
+  
+  # Analyse the results
+  tbl <- table(est.states$state, comb$NO_state)
+  colnames(est.states)[2:3] <- c("Deficit", "Surplus")
+  est.states$Date <- comb$Date
+  
+  # Change the naming of the states based on the tbl
+  grep("Deficit", comb$NO_state)
+  grep("1", est.states$state)
+  
+  est.states$state <- gsub("1", "Deficit", est.states$state)
+  est.states$state <- gsub("2", "Surplus", est.states$state)
+  
+  return(est.states)
+}
 
-# Run and fit HMM
-hmm <- depmix(fluc ~ 1, 
-              family = gaussian(), 
-              nstates = 2, 
-              data = comb)
-
-fit.hmm <- fit(hmm, verbose = F)
-est.states <- posterior(fit.hmm)
-
-# Analyse the results
-tbl <- table(est.states$state, comb$NO_state)
-colnames(est.states)[2:3] <- c("Deficit", "Surplus")
-est.states$Date <- comb$Date
-
-grep("Deficit", comb$NO_state)
-grep("1", est.states$state)
-
-est.states$state <- gsub("1", "Deficit", est.states$state)
-est.states$state <- gsub("2", "Surplus", est.states$state)
-tbl
-
-# Plot the results
-mycols <- c("darkmagenta", "turquoise")
-
-g1 <- ggplot(comb, aes(x = Date, y = NO_state, fill = NO_state, col = NO_state)) + 
-         geom_bar(stat = "identity", alpha = I(0.75)) + 
-         scale_fill_manual(values = mycols, labels = c("Deficit", "Surplus")) +
-         scale_color_manual(values = mycols, labels = c("Deficit", "Surplus")) +
-         theme(axis.ticks = element_blank(), axis.text.y = element_blank()) +
-         labs(y = "Actual State")
-
-g2 <- ggplot(est.states, aes(x = Date, y = state, fill = state, col = state)) + 
-  geom_bar(stat = "identity", alpha = I(0.75)) +
-  scale_fill_manual(values = mycols, name = "State:\nProduction of\nNorway", labels = c("Deficit", "Surplus")) +
-  scale_color_manual(values = mycols, name = "State:\nProduction of\nNorway", labels = c("Deficit", "Surplus")) +
-  theme(axis.ticks = element_blank(), axis.text.y = element_blank()) + 
-  labs(y = "Estimated State")
-
-grid.arrange(g1, g2, 
-             widths = 1, 
-             nrow = 2)
-
-
+# Plot the results----
+display.hmm <- function(original, 
+                        model){
+  
+  # Define colours
+  mycols <- c("darkmagenta", "turquoise")
+  
+  # Plotting the actual states for the further comparison with the HMM estimates (we look only into Norwegian states)
+  g1 <- ggplot(original, aes(x = Date, y = NO_state, fill = NO_state, col = NO_state)) + 
+    geom_bar(stat = "identity", alpha = I(0.75)) + 
+    scale_fill_manual(values = mycols, name = "State:\nProduction of\nNorway", labels = c("Deficit", "Surplus")) +
+    scale_color_manual(values = mycols, name = "State:\nProduction of\nNorway", labels = c("Deficit", "Surplus")) +
+    theme(axis.ticks = element_blank(), axis.text.y = element_blank()) +
+    labs(y = "Actual State")
+  
+  # Visualise the HMM model estimates
+  g2 <- ggplot(model, aes(x = Date, y = state, fill = state, col = state)) + 
+    geom_bar(stat = "identity", alpha = I(0.75)) +
+    scale_fill_manual(values = mycols, name = "State:\nProduction of\nNorway", labels = c("Deficit", "Surplus")) +
+    scale_color_manual(values = mycols, name = "State:\nProduction of\nNorway", labels = c("Deficit", "Surplus")) +
+    theme(axis.ticks = element_blank(), axis.text.y = element_blank()) + 
+    labs(y = "Estimated State")
+  
+  return(grid.arrange(g1, g2,
+                      widths = 1, 
+                      nrow = 2))
+}
 ```
 
 4. Interpretation 
