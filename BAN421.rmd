@@ -4,28 +4,24 @@ author: "Group 2"
 date: "November 22, 2019"
 output:
   pdf_document: default
-  html_document:
-    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Introduction
-1. Introduction
+# 1. Introduction
 
 In this paper, we try to investigate the influence of other countries' total supply (production)
 and total consumption on the electricity market spot prices in Norway, investigating prices for Bergen and Tromsø. All the input data is taken from the Nordpool webiste and is dating from 2014 to 2018. 
 
-# Economic reasoning 
+## Economic reasoning 
 Comparing production and consumption volumes of electricity for a country, one can easily calculate the delta of those, representing times in which there is either overproduction or oversupply. Assuming a non-perfect energy storage capacitiy, these peaks and lows in the nation-wide electricty net provide the opportunity and need to trade electricity with economically and geographically closely related countries [citation].
 
 Therefore, our Reasearch Question is: how depended is Norway and its electricity price from other nordic countries and their electricity production?
 
 Before starting the analysis, we explore the most efficient way to accommodate multiple files when loading raw data into an R environment, specifically, by comparing the processing time using dataframe and tibble. After that, we will make plots to see the general consumption and production trends for each country during the past five years. In addition, the price trend in Norway will also be plotted to see how price had fluctuated during the past five years. Under the help of these plots, we will have a better understanding about the evolution of each factor. In order to investigate the relationship between consumtion, production and price, we will use baysian statistics, and specifically the Hidden Markov Model (HMM). We will implement it with a suitable R package and finally interpret the results.
 
-# If we are really going ahead with the Dplyr package (since this guy HATES it, we should at least acknowledge that this is not the only way)
 For the purpose of our investigation, we decided to use packages from the so-call R "tidyverse". While the group is aware of the multiple downsides of using piped statements, we decided for the purpose of this particular investigation to make use of them.
 
 ```{r Libraries, warning = FALSE, message = FALSE, echo = FALSE}
@@ -42,8 +38,7 @@ library(magrittr) ## really?
 library(depmixS4)
 # rm( list=ls() )
 ```
-# Preprocessing and analysis
-2. Preparing for analysis
+# 2. Preprocessing and analysis
 
 For our first step, we use system.time to compare the processing time of using dataframe and tibble to accomadate the data we cleaned. We get the following result:
 ```{r Data cleaning, warning = FALSE, message = FALSE, echo = FALSE}
@@ -124,7 +119,7 @@ produc_pre<- produc_pre%>%
 save(consum_pre,consumption,price,produc_pre,production,file="BAN421.Rdata")
 ```
 
-3. Plotting
+## Plotting
 
 The next step in our research is to create plots in order to have a general picture about price,production, and consumption changes over the five year timeframe. After creating the yearly amounts, we firstly look at the variety in consumption in Norway.
 
@@ -230,21 +225,32 @@ ggplot(data=plot_price,mapping=aes(x=year))+
   ylab("mean_price")
 ## can we change to smth. that shows more "meaning"/ with a line?
 ```
-From the above figures, we can see that the consumption and production in Norway differentiate from each other quite a lot, which means that Norway has been trading (import and export) electricity with other countries. This gives us a positive signal about our hypothesis that other countries' consumption and production may have an impact on the price in Norwegian market. The market spot price in Norway has been fluctuating since 2014 and presents an incresing trend since 2015. Especially, there are two peak time periods in Tromsø. The reasons behind this are not that clear and we belive that there are way more factors influencing this. However in our report, we are going to focus only on the impact by other countries' consumption and production.
+From the above figures, we can see that the consumption and production in Norway differentiate from each other quite a lot, which means that Norway has been trading (import and export) electricity with other countries. This gives us a positive signal about our hypothesis that other countries' consumption and production may have an impact on the price in Norwegian market. The market spot price in Norway has been fluctuating since 2014 and presents an incresing trend since 2015. Especially, there are two peak time periods in Tromsø. The reasons behind this are not that clear and we belive that there are way more factors influencing this. However in our model, we are going to focus only on the impact by other countries' consumption and production.
 
-3. Model: Introduction, definition, fit
+# 3. Hidden Markov Model
 
-# Theory
-Therefore, in the following we will introduce the Hidden Markov Model (HMM) to uncover this. The HMM can be seen as the [... + sources]
-In economics, HMM are mainly applied as so-called regime switching models.
+## Theory
+Hidden Markov Model (HMM) is a statistical probabolistic framework, where observed data is modelled as a series of outputs generated by several hidden states (Franzese, 2019). HMM is based on an augmenting Markov chain - model providing probabilities of sequences of random variables. Based on the researched applications of the Markov mdodels, chain sequencing is used fairly more often for the prediction rather than the standard HMM, while hidden models are applied for the information filtering. 
 
-# Packages
-To indentify suitable packages to implement this method in R, we looked through the "Comprehensive R Archive Network Task View" and found in total three packages: "depmixS4", "HMM", and "HiddenMarkov". After comparing and testing, we decided for "depmixS4", which is regulary updated and often used in recent research (e.g. CITATION). [...]
+Unlike Markov chains, hidden Markov models are finding probabilities of the unobservable events, which are referred to as "hidden". In our model, we define consumption-production states(difference between the produced amounts of electricity and consumed deriving two key states - deficit and glut/oversupply).
 
-# Approach 
-To prepare data for the HMM model, we need to define the different states we are interested in, which are the other countries and which influence they have on the Norwegian electricity price. Therefore, we take the delta of supply and demand for a given country, where a positive number indicates an over-production and therefore an export to another country (e.g. Norway) and a negative number indegates an under-consumsion, which means that the country need to import electricity. Therefore, we define:
-S1: 
-S2: 
+Nowadays, hidden Markov models are widely used in the biological studies (DNA sequencing), natural language processing (POS-tagging) and market analysis (defining market regimes, such as bullish/bearish market trends). Apart from sequencing and prediction, HMM can be used for the information filtering: for instance, marine systems are applying HMM to identify vessels that are using port services, providing real-time vessel identification. In the various fields, HMM has shown comparably high accuracy.
+
+## Packages
+To indentify suitable packages to implement this method in R, we looked through the "Comprehensive R Archive Network Task View" and found in total three packages: "depmixS4", "HMM", and "HiddenMarkov". After comparing and testing, we decided for "depmixS4", which is regulary updated and often used for the HMM implementations in R. Depmixs4 package provides functionality to fit the HMM on dependent mixture models (HMM of GLM or similar distributions). 
+
+The key functions used for the modelling are: depmix, fit and posterior. Depmix is aimed to create the "raw" hidden Markov model with the given settings, which are:
+- response (interfaces to the GLM); 
+- data from where the responses are fetched; 
+- family, also known as type of response, in our model it is normal (Gaussian) distribution
+- nstates - number of states of the model (in our case just 2, which are deficit and oversupply).
+
+## Approach 
+Before we get to the model itself, we need to do a bit more data preprocessing. For this matter consumption and production data is combined by the common date and hour time and new columns are added, which are as follows:
+- `NO`, `DK`, `SE`, `NORD` - difference between the consumption and production for Norway, Denmark, Sweden and Nordic countries respectively;
+- `NO_state`,`DK_state`,`SE_state`,`NORD_state` - state(deficit or oversupply), based on the found number on the aforementioned columns. 
+
+Furthermore, before the modelling itself we summarise the data by day to clean the daily "noise" and irrelevant fluctuations within the model, as well as convert parameters to the suitable for us formats: characters, date and numeric.
 
 ```{r Statistical methods, message=FALSE, warning=FALSE, include=FALSE}
 ## 3.Statistical methods ----
@@ -345,6 +351,25 @@ display.hmm <- function(original,
 }
 ```
 
-4. Interpretation 
+To develop HMM model, we go through the following stages:
+- HMM creation;
+- Fitting the model;
+- Presenting the output as a dataframe
+- Plotting the results and comparing to the actual data.
+
+As a final result, we want to find out an interdependece between the consumption~production parameters of other countries and Norway. This way we can define the level of dependence of Norway on energy import/export, it's correlation with the neighbouring countries and region as a whole, as well as to define, which parameters of which countries affect the energy state of Norway the best.
+
+For these matter, we developed two major functions. First function (`hmm`), is going through the first 3 steps of the model creation utilising the key functions of the depmixs4 package (depmix, fit and posterior), while the second function is aimed to visualise the results and provide plotting with the actual state for the further analysis and comparison. As for the input parameters, `hmm` function requires parameter and data to be filled in: parameter defines the variable used for the GLM, while the data defines data frame interpreting the variable used in the response. Function `display.hmm` requires the dataframe with the original data and the results of the `hmm` function.
+
+## Interpretation 
+
+```{r NORD, warning = FALSE, message = FALSE, echo = FALSE}
+# Run functions for NORD
+# Results are rather disperse
+display.hmm(original = comb,
+            model = hmm(param = comb$NORD,
+                        data = comb))
+```
+
 
 The final graph shows us [...]
