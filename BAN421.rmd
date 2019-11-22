@@ -431,7 +431,7 @@ The final graph shows us great results with the "Surplus" state dominating the m
 Based on the models, we can conclude that Norwegian production state has a higher dependece and correlation with Sweden in comparison to the other states. Such conclusion is logical, with Sweden being the second biggest energy supplier in the Nordic sector. Apart from that Norway is comaparably more independent within the energy sector in comparison to the other states across the Nordic region, which also can explain the performance of the HMM models.
 
 ### Comparison of the actual models
-```{r SE&NO, echo= FALSE, message=FALSE, warning=FALSE}
+```{r SE and NO, echo= FALSE, message=FALSE, warning=FALSE}
 g1 <- ggplot(comb, aes(x = Date, y = SE_state, fill = SE_state, col = SE_state)) + 
   geom_bar(stat = "identity", alpha = I(0.75)) + 
   scale_fill_manual(values = c("darkmagenta", "turquoise"), name = "State:\nProduction of\nSweden", labels = c("Deficit", "Surplus")) +
