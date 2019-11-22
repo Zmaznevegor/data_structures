@@ -1,8 +1,10 @@
 ---
 title: "BAN421-report"
-author: Group 2
-date: November 22, 2019
-output: pdf_document
+author: "Group 2"
+date: "November 22, 2019"
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
@@ -47,9 +49,9 @@ For our first step, we use system.time to compare the processing time of using d
 ## 1.Data cleaning process ----
 
 #find the file names of consumption, spot prices and production for each year
-consum_names <- list.files(path = "~/NHH Semester I/BAN421 - Data Structures in R/Paper/Project_421/Data", pattern = "consumption-per.*.xlsx", full.names = T)
-elspot_names <- list.files(path = "~/NHH Semester I/BAN421 - Data Structures in R/Paper/Project_421/Data", pattern = "elspot.*.xlsx", full.names = T)
-production_names <- list.files(path = "~/NHH Semester I/BAN421 - Data Structures in R/Paper/Project_421/Data", pattern = "production-per.*.xlsx", full.names = T)
+consum_names <- list.files(path = ".", pattern = "consumption-per.*.xlsx", full.names = T)
+elspot_names <- list.files(path = ".", pattern = "elspot.*.xlsx", full.names = T)
+production_names <- list.files(path = ".", pattern = "production-per.*.xlsx", full.names = T)
 
 # try to load all 5 years consumption data into one dataframe
 consumption <- data.frame() # create one empty dataframe first
@@ -103,10 +105,10 @@ price<-na.omit(price)
 We continue to load the prognosis data for consumption and production in the different countries, so that we can use it to predict based on our model.
 
 ```{r Finalized R-data, warning = FALSE, message = FALSE, echo = FALSE}
-consum_pre<-list.files(path = "~/NHH Semester I/BAN421 - Data Structures in R/Paper/Project_421/Data", 
+consum_pre<-list.files(path = ".", 
                            pattern = "consumption-pro.*.xlsx", full.names = T)
 consum_pre<-read_xlsx(consum_pre)
-produc_pre<-list.files(path = "~/NHH Semester I/BAN421 - Data Structures in R/Paper/Project_421/Data", 
+produc_pre<-list.files(path = ".", 
                            pattern = "production-pro.*.xlsx", full.names = T)
 produc_pre<-read_xlsx(produc_pre)
 # sum up all productions from small areas in each country and take the total only
@@ -290,7 +292,7 @@ hmm <- depmix(fluc ~ 1,
               nstates = 2, 
               data = comb)
 
-fit.hmm <- fit(hmm)
+fit.hmm <- fit(hmm, verbose = F)
 est.states <- posterior(fit.hmm)
 
 # Analyse the results
