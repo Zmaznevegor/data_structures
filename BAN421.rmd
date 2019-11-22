@@ -2,8 +2,7 @@
 title: "BAN421-report"
 author: "Group 2"
 date: "November 22, 2019"
-output:
-  pdf_document: default
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
@@ -31,10 +30,11 @@ library(tibble)
 library(quantmod)
 library(MASS)
 library(reshape2)
-library(dplyr) ## really?
+library(scales)
+library(dplyr) 
 library(ggplot2)
 library(gridExtra)
-library(magrittr) ## really?
+library(magrittr) 
 library(depmixS4)
 # rm( list=ls() )
 ```
@@ -112,14 +112,14 @@ produc_pre<- produc_pre%>%
   mutate(NO=NO1+NO2+NO3+NO4+NO5)%>%
   mutate(SE=SE1+SE2+SE3+SE4)%>%
   mutate(DK=DK1+DK2) %>%
-  dplyr::select("Date","Hours","FI","DK","EE", # specify to avoid overlap with "MASS" package
-         "LV","LT","NO","SE")
+  dplyr::select("Date","Hours","FI","DK","EE","LV","LT","NO","SE")
+    # specify to avoid overlap with "MASS" package
 
 # save all these data as R.data
 save(consum_pre,consumption,price,produc_pre,production,file="BAN421.Rdata")
 ```
 
-## Plotting
+# Plotting
 
 The next step in our research is to create plots in order to have a general picture about price,production, and consumption changes over the five year timeframe. After creating the yearly amounts, we firstly look at the variety in consumption in Norway.
 
@@ -143,26 +143,37 @@ plot_c<-consumption %>%
 
 # plot consumtion trend in Norway 
 g1 <- ggplot(data=consumption,mapping=aes(x=consumption$Date))+
-  geom_line(aes(y=consumption$NO, color="NO"))+
-  xlab("Date")+
-  ylab("consumption")+
+  geom_line(aes(y=consumption$NO, color="NO"), color="blue")+
+  ylab("Electricity consumption")+
+  xlab("")+
   ggtitle("Daily Consumption in Norway")
 
 #and all countires
-g2 <- ggplot(data=plot_c,mapping=aes(x=year))+
-  geom_point(aes(y=plot_c$NO, color="NO"))+
+g2 <- ggplot(data=plot_c,mapping=aes(x=year, group=1))+
+  geom_point(aes(y=plot_c$NO,color="NO"))+
+  geom_smooth(aes(y=plot_c$NO,color="NO"),method=lm, se=FALSE, fullrange=TRUE) +
   geom_point(aes(y=plot_c$SE,color="SE"))+
+  geom_smooth(aes(y=plot_c$SE,color="SE"),method=lm, se=FALSE, fullrange=TRUE) +
   geom_point(aes(y=plot_c$DK,color="DK"))+
+  geom_smooth(aes(y=plot_c$DK,color="DK"),method=lm, se=FALSE, fullrange=TRUE) +
   geom_point(aes(y=plot_c$FI,color="FI"))+
+  geom_smooth(aes(y=plot_c$FI,color="FI"),method=lm, se=FALSE, fullrange=TRUE) +
   geom_point(aes(y=plot_c$LV,color="LV"))+
+  geom_smooth(aes(y=plot_c$LV,color="LV"),method=lm, se=FALSE, fullrange=TRUE) +
   geom_point(aes(y=plot_c$LT,color="LT"))+
-  ggtitle("Yearly consumption for all countries")+
-  ylab("Total electricity consumption")
+  geom_smooth(aes(y=plot_c$LT,color="LT"), method=lm, se=FALSE, fullrange=TRUE) +
+  labs(title = "Yearly consumption for all countries")+
+  scale_color_discrete(name="Country")+
+  ylab("Electricity consumption")+
+  xlab("Year")+
+  scale_y_log10(breaks = trans_breaks("log10", function(x) 10^x),
+                labels = trans_format("log10", math_format(10^.x)))
 
 grid.arrange(g1, g2,
              widths = 1, 
              nrow = 2)
 ```
+
 
 One can observe seasonal fluctuations, with a higher demand for electricity in winter months than in summer months. Following, we compare the yearly consumption of all countries.
 
@@ -177,20 +188,30 @@ plot_p<-production %>%
   summarise_each(funs(sum)) #sum the toal production each country each year
 # use ggplot to plot production trend in Norway 
 g1 <- ggplot(data=production,mapping=aes(x=production$Date))+
-  geom_line(aes(y=production$NO, color="NO"))+
-  xlab("Date")+
-  ylab("production")+
+  geom_line(aes(y=production$NO, color="NO"), color="blue")+
+  xlab("")+
+  ylab("Electricity production")+
   ggtitle("Daily Production in Norway")
 
-g2 <- ggplot(data=plot_p,mapping=aes(x=year))+
-  geom_point(aes(y=plot_p$NO, color="NO"))+
+g2 <- ggplot(data=plot_p,mapping=aes(x=year, group=1))+
+  geom_point(aes(y=plot_p$NO,color="NO"))+
+  geom_smooth(aes(y=plot_p$NO,color="NO"),method=lm, se=FALSE, fullrange=TRUE) +
   geom_point(aes(y=plot_p$SE,color="SE"))+
+  geom_smooth(aes(y=plot_p$SE,color="SE"),method=lm, se=FALSE, fullrange=TRUE) +
   geom_point(aes(y=plot_p$DK,color="DK"))+
+  geom_smooth(aes(y=plot_p$DK,color="DK"),method=lm, se=FALSE, fullrange=TRUE) +
   geom_point(aes(y=plot_p$FI,color="FI"))+
+  geom_smooth(aes(y=plot_p$FI,color="FI"),method=lm, se=FALSE, fullrange=TRUE) +
   geom_point(aes(y=plot_p$LV,color="LV"))+
+  geom_smooth(aes(y=plot_p$LV,color="LV"),method=lm, se=FALSE, fullrange=TRUE) +
   geom_point(aes(y=plot_p$LT,color="LT"))+
-  ggtitle("Yearly production for all")+
-  ylab("production")
+  geom_smooth(aes(y=plot_p$LT,color="LT"), method=lm, se=FALSE, fullrange=TRUE) +
+  labs(title = "Yearly production for all countries")+
+  scale_color_discrete(name="Country")+
+  ylab("Electricity production")+
+  xlab("Year")+
+  scale_y_log10(breaks = trans_breaks("log10", function(x) 10^x),
+                labels = trans_format("log10", math_format(10^.x)))
 
 grid.arrange(g1, g2,
              widths = 1, 
@@ -204,9 +225,10 @@ Also here we can observe just slighty fluctuating volumes, with Norway and Swede
 g1 <- ggplot(data=price,mapping=aes(x=price$Date))+
   geom_line(aes(y=price$Tromsø, color="Tromsø"))+
   geom_line(aes(y=price$Bergen, color="Bergen"))+
-  xlab("date")+
-  ylab("daily price")+ 
-  ggtitle("Daily Price in Norway")
+  xlab("")+
+  ylab("Electricity price")+ 
+  ggtitle("Daily price in Norway")+
+  scale_color_discrete(name="City")
 
 # Create the yearly plotting data
 plot_price<-price %>%
@@ -215,11 +237,15 @@ plot_price<-price %>%
   summarise_each(funs(mean))#calculate the mean price in Norway each year in each place
 # A general trend in each year 
 
-g2 <- ggplot(data=plot_price,mapping=aes(x=year))+
+g2 <- ggplot(data=plot_price,mapping=aes(x=year, group=1))+
   geom_point(aes(y=plot_price$Bergen, color="Bergen"))+
+  geom_line(aes(y=plot_price$Bergen, color="Bergen"))+
   geom_point(aes(y=plot_price$Tromsø, color="Tromsø"))+
-  ggtitle("Yearly price in Norway")+
-  ylab("mean_price")
+  geom_line(aes(y=plot_price$Tromsø, color="Tromsø"))+
+  ggtitle("Yearly average price in Norway")+
+  scale_color_discrete(name="City")+
+  ylab("Mean elect. price")+
+  xlab("Year")
 
 grid.arrange(g1, g2,
              widths = 1, 
@@ -242,16 +268,16 @@ Nowadays, hidden Markov models are widely used in the biological studies (DNA se
 ## Packages
 To indentify suitable packages to implement this method in R, we looked through the "Comprehensive R Archive Network Task View" and found in total three packages: "depmixS4", "HMM", and "HiddenMarkov". After comparing and testing, we decided for "depmixS4", which is regulary updated and often used for the HMM implementations in R. Depmixs4 package provides functionality to fit the HMM on dependent mixture models (HMM of GLM or similar distributions). 
 
-The key functions used for the modelling are: depmix, fit and posterior. Depmix is aimed to create the "raw" hidden Markov model with the given settings, which are:
-- response (interfaces to the GLM); 
-- data from where the responses are fetched; 
-- family, also known as type of response, in our model it is normal (Gaussian) distribution
-- nstates - number of states of the model (in our case just 2, which are deficit and oversupply).
+The key functions used for the modelling are: depmix, fit and posterior. Depmix is aimed to create the "raw" hidden Markov model with the given settings, which are:  
+-- response (interfaces to the GLM);   
+-- data from where the responses are fetched;  
+-- family, also known as type of response, in our model it is normal (Gaussian) distribution;  
+-- nstates - number of states of the model (in our case just 2, which are deficit and oversupply).  
 
 ## Approach 
-Before we get to the model itself, we need to do a bit more data preprocessing. For this matter consumption and production data is combined by the common date and hour time and new columns are added, which are as follows:
-- `NO`, `DK`, `SE`, `NORD` - difference between the consumption and production for Norway, Denmark, Sweden and Nordic countries respectively;
-- `NO_state`,`DK_state`,`SE_state`,`NORD_state` - state(deficit or oversupply), based on the found number on the aforementioned columns. 
+Before we get to the model itself, we need to do a bit more data preprocessing. For this matter consumption and production data is combined by the common date and hour time and new columns are added, which are as follows:  
+-- `NO`, `DK`, `SE`, `NORD` - difference between the consumption and production for Norway, Denmark, Sweden and Nordic countries respectively;  
+-- `NO_state`,`DK_state`,`SE_state`,`NORD_state` - state(deficit or oversupply), based on the found number on the aforementioned columns.  
 
 Furthermore, before the modelling itself we summarise the data by day to clean the daily "noise" and irrelevant fluctuations within the model, as well as convert parameters to the suitable for us formats: characters, date and numeric.
 
@@ -354,19 +380,22 @@ display.hmm <- function(original,
 }
 ```
 
-To develop HMM model, we go through the following stages:
-- HMM creation;
-- Fitting the model;
-- Presenting the output as a dataframe
-- Plotting the results and comparing to the actual data.
+To develop HMM model, we go through the following stages:  
+-- HMM creation;  
+-- Fitting the model;  
+-- Presenting the output as a dataframe;  
+-- Plotting the results and comparing to the actual data.  
 
 As a final result, we want to find out an interdependece between the consumption~production parameters of other countries and Norway. This way we can define the level of dependence of Norway on energy import/export, it's correlation with the neighbouring countries and region as a whole, as well as to define, which parameters of which countries affect the energy state of Norway the best.
 
 For these matter, we developed two major functions. First function (`hmm`), is going through the first 3 steps of the model creation utilising the key functions of the depmixs4 package (depmix, fit and posterior), while the second function is aimed to visualise the results and provide plotting with the actual state for the further analysis and comparison. As for the input parameters, `hmm` function requires parameter and data to be filled in: parameter defines the variable used for the GLM, while the data defines data frame interpreting the variable used in the response. Function `display.hmm` requires the dataframe with the original data and the results of the `hmm` function.
 
-## Interpretation 
+## Results and interpretation 
+Both our functions are suited for the previously combined data frame `comb`, where we store production-consumption data for the Scandinavian countries and a Nordic region in total. It is important to notice that our functions are aimed to provide the results specifically for Norway and to compare it with the actual states for Norway we derived earlier during the pre-processing steps.
 
-NORD
+In order to understand the export/import interdependence, we have run the hidden Markov model based on the parameters of Nordic region, Denmark and Sweden. In order to define the differences in fluctuations rather than just changes in the differences between the consumption and productin, we used the log function and diff functions of the production-consumption diffrences over time. It is similar to the applications of the HMM to the market regime analysis, where log and diff functions are applied to the closing price.
+
+### Nordic region
 ```{r NORD, warning = FALSE, message = FALSE, echo = FALSE}
 # Run functions for NORD
 # Results are rather disperse
@@ -374,8 +403,10 @@ display.hmm(original = comb,
             model = hmm(param = comb$NORD,
                         data = comb))
 ```
+Above we can see the results based on the parameter of the Nordic countries, which is represented in the data frame `comb` in the column `NORD`. Upper graph shows the actual changes in the state over the time, while thwe bottom graph is displaying the results based on the HMM estimations. Displayed loglikelihood is fairly low, and based on the plots, we can see that model does not provide with the close to the actual results. Noticable, model performs worse for th first 2 years and closer to the actual results in the last year.
 
-Denmark
+
+### Denmark
 ```{r DK, warning = FALSE, message = FALSE, echo = FALSE}
 # Run functions for NORD
 # Results are rather disperse
@@ -383,13 +414,23 @@ display.hmm(original = comb,
             model = hmm(param = comb$DK,
                         data = comb))
 ```
+Completely differently model works based on the single-country parameter for Denmark. We can mention that the loglikelihood is even lower that in the previous model. Displayed graph also provides us with understanding of the low dependece for the Norwegian production state and the way it is tied with the Denmark's consumption-to-production variables.  
 
-Sweden
-```{r SE, warning = FALSE, message = FALSE, echo = FALSE}
+Unlike the previous model, where the HMM performs poorly for the first part of the perioud and has closer to the actual results towards the end, here we can observe a poor and rather flat performance of the model throughout all the period.
+
+### Sweden
+```{r SE, echo=, message=FALSE, warning=FALSE}
 # Run functions for NORD
 # Results are rather disperse
 display.hmm(original = comb,
             model = hmm(param = comb$SE,
                         data = comb))
 ```
-The final graph shows us [...]
+The final graph shows us surprisingly good results. Loglikelihood is comparable higher than in previous two models. Based on the graph, HMM visibly performs better with minor faults in-between the years. In this case, HMM has grasped the overall trend, having the majority of estimated states being a surplus, which is similar to the actual results.
+
+
+# 4. Conclusion
+
+Taking everything into account, we can conclude by saying that Norway is one of the least-dependent countries in the benchmark set, when it comes to electricity. This might mainly be due to the vast amount of hydropower they generate, which is a pretty flexible way of producing electricity and therefore good for balancing highs and lows in the demand of electricity, without having to rely on neighbouring countries. Those neighboaring countries, for example Denmark, on the other hand, are much more dependent on Norway and also Sweden for importing electricity during their peak periods.  
+
+# References
